@@ -2,6 +2,7 @@ package domain
 
 import (
 	"github.com/google/uuid"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,22 @@ const (
 	INCOMPLETE
 )
 
+func StatusFactory(name string) Status {
+	var status Status
+	if strings.EqualFold(name, "NOT_STARTED") {
+		status = NOT_STARTED
+	} else if strings.EqualFold(name, "STARTED") {
+		status = STARTED
+	} else if strings.EqualFold(name, "PAUSED") {
+		status = PAUSED
+	} else if strings.EqualFold(name, "COMPLETE") {
+		status = COMPLETE
+	} else if strings.EqualFold(name, "INCOMPLETE") {
+		status = INCOMPLETE
+	}
+	return status
+}
+
 type StatusPoint struct {
 	ID        uuid.UUID `json:"id" bson:"id,omitempty"`
 	Timestamp time.Time `json:"timeStamp" bson:"timeStamp,omitempty"`
@@ -23,4 +40,8 @@ type StatusPoint struct {
 
 type StatusError struct {
 	Msg string
+}
+
+type StatusMachine struct {
+	statusPoints *[]StatusPoint
 }

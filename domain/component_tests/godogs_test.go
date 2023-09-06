@@ -6,15 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cucumber/godog"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 )
 
 type TestData struct {
-	task            *domain.Task
 	tasks           map[string]*domain.Task
 	tasksInProgress map[string]*domain.TaskInProgress
+	person          *domain.Person
 }
 
 type ctxKey struct{}
@@ -58,11 +59,43 @@ func theTaskNamedHasADescription(ctx context.Context, arg1 string) (context.Cont
 func getTaskHavingNameFromContext(ctx context.Context, name string) (*domain.Task, bool) {
 
 	if anObject, ok := ctx.Value(ctxKey{}).(*TestData); ok {
-		if anObject.task != nil && strings.EqualFold(anObject.task.Name, name) {
-			return anObject.task, ok
+
+		for _, aTask := range anObject.tasks {
+			if aTask != nil && strings.EqualFold(aTask.Name, name) {
+				return aTask, ok
+			}
 		}
+
 	}
 	return nil, false
+}
+
+func getTaskInProgressForTaskFromContext(ctx context.Context, task *domain.Task) (*domain.TaskInProgress, bool) {
+
+	if anObject, ok := ctx.Value(ctxKey{}).(*TestData); ok {
+
+		for _, aTaskInProgress := range anObject.tasksInProgress {
+			if aTaskInProgress != nil && strings.EqualFold(aTaskInProgress.TaskID, task.ID) {
+				return aTaskInProgress, ok
+			}
+		}
+
+	}
+	return nil, false
+}
+
+func getTasksInProgressForTaskFromContext(ctx context.Context, task *domain.Task) ([]*domain.TaskInProgress, bool) {
+	var tasksInProgress []*domain.TaskInProgress
+	if anObject, ok := ctx.Value(ctxKey{}).(*TestData); ok {
+
+		for _, aTaskInProgress := range anObject.tasksInProgress {
+			if aTaskInProgress != nil && strings.EqualFold(aTaskInProgress.TaskID, task.ID) {
+				tasksInProgress = append(tasksInProgress, aTaskInProgress)
+			}
+		}
+
+	}
+	return tasksInProgress, (len(tasksInProgress) > 0)
 }
 
 func theTaskNamedHasAnID(ctx context.Context, arg1 string) (context.Context, error) {
@@ -71,8 +104,61 @@ func theTaskNamedHasAnID(ctx context.Context, arg1 string) (context.Context, err
 	if !ok {
 		return ctx, errors.New("Task not saved in context")
 	}
-	if atask.ID.String() == "" {
+	if atask.ID == "" {
 		return ctx, errors.New("GUID not set on task id")
+	}
+	return ctx, nil
+}
+
+func aTaskInProgressForTaskIsInStatus(ctx context.Context, arg1, arg2 string) (context.Context, error) {
+
+	atask, ok := getTaskHavingNameFromContext(ctx, arg1)
+	if !ok {
+		return ctx, errors.New("Task not saved in context")
+	}
+
+	taskInProgress, ok := getTaskInProgressForTaskFromContext(ctx, atask)
+	if !ok {
+		return ctx, errors.New("Task in progress not saved in context")
+	}
+	statusToCheckAgainst := domain.StatusFactory(arg2)
+	if taskInProgress.Status.Status != statusToCheckAgainst {
+		return ctx, errors.New("Wrong Status is assigned")
+	}
+
+	return ctx, nil
+}
+
+func theFollowingPersonIsDefined(ctx context.Context, arg1 *godog.Table) (context.Context, error) {
+
+	aRow := arg1.Rows[1]
+	first := aRow.Cells[0].Value
+	last := aRow.Cells[1].Value
+
+	party := &domain.Person{
+		ID:    uuid.New().String(),
+		First: first,
+		Last:  last,
+	}
+
+	if anObject, ok := ctx.Value(ctxKey{}).(*TestData); ok {
+		anObject.person = party
+
+	}
+	return ctx, nil
+}
+
+func theTaskHasTasksInProgress(ctx context.Context, arg1 string, arg2 int) (context.Context, error) {
+	atask, ok := getTaskHavingNameFromContext(ctx, arg1)
+	if !ok {
+		return ctx, errors.New("Task not saved in context")
+	}
+	var tasksInProgress []*domain.TaskInProgress
+	if tasksInProgress, ok = getTasksInProgressForTaskFromContext(ctx, atask); !ok {
+		return ctx, errors.New("Task in progress not saved in context")
+	}
+	if len(tasksInProgress) > arg2 {
+		return ctx, errors.New("Too many tasks are in progress")
 	}
 	return ctx, nil
 }
@@ -90,6 +176,11 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the task named "([^"]*)" is in status "([^"]*)"$`, theTaskNamedIsInStatus)
 	ctx.Step(`^the task named "([^"]*)" has a description$`, theTaskNamedHasADescription)
 	ctx.Step(`^the task named "([^"]*)" has an ID$`, theTaskNamedHasAnID)
+	ctx.Step(`^I choose to work with a task named "([^"]*)"$`, iChooseToWorkWithATaskNamed)
+
+	ctx.Step(`^a task in progress for task "([^"]*)" is in status "([^"]*)"$`, aTaskInProgressForTaskIsInStatus)
+	ctx.Step(`^the following person is defined$`, theFollowingPersonIsDefined)
+	ctx.Step(`^the task "([^"]*)" has (\d+) tasks in progress$`, theTaskHasTasksInProgress)
 
 }
 
@@ -101,8 +192,12 @@ func aNewTask(ctx context.Context, data *godog.Table) (context.Context, error) {
 		for j := 1; j < len(data.Rows[0].Cells); j++ {
 			name := data.Rows[j].Cells[0].Value
 			description := data.Rows[j].Cells[1].Value
-
-			testData.task = domain.NewTask(name, description)
+			if testData.tasks == nil {
+				testData.tasks = make(map[string]*domain.Task)
+				testData.tasksInProgress = make(map[string]*domain.TaskInProgress)
+			}
+			task := domain.NewTask(name, description)
+			testData.tasks[task.ID] = task
 
 			ctx = context.WithValue(ctx, ctxKey{}, &testData)
 		}
@@ -167,4 +262,24 @@ type asserter struct {
 // Errorf is used by the called assertion to report an error
 func (a *asserter) Errorf(format string, args ...interface{}) {
 	a.err = fmt.Errorf(format, args...)
+}
+
+func iChooseToWorkWithATaskNamed(ctx context.Context, arg1 string) (context.Context, error) {
+	atask, ok := getTaskHavingNameFromContext(ctx, arg1)
+	if !ok {
+		return ctx, errors.New("Task not saved in context")
+	}
+	var tip *domain.TaskInProgress
+	var err error
+	if tip, err = atask.Start(""); err != nil {
+		panic("Unable to start work on a task")
+	}
+	//if err := tip.Start(); err != nil {
+	//	panic("Unable to start a task")
+	//}
+
+	if anObject, ok := ctx.Value(ctxKey{}).(*TestData); ok {
+		anObject.tasksInProgress[tip.ID] = tip
+	}
+	return ctx, nil
 }

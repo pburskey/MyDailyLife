@@ -7,34 +7,37 @@ import (
 )
 
 type Task struct {
-	ID          uuid.UUID `json:"id" bson:"id,omitempty"`
-	Name        string    `json:"name" bson:"name,omitempty"`
-	Description string    `json:"description" bson:"description,omitempty"`
+	ID          string `json:"id" bson:"id,omitempty"`
+	Name        string `json:"name" bson:"name,omitempty"`
+	Description string `json:"description" bson:"description,omitempty"`
+	PartyId     string `json:"party_id" bson:"id,omitempty"`
 }
 
 type TaskInProgress struct {
-	ID       uuid.UUID    `json:"id" bson:"id,omitempty"`
-	TaskID   uuid.UUID    `json:"taskID" bson:"taskID,omitempty"`
+	ID       string       `json:"id" bson:"id,omitempty"`
+	TaskID   string       `json:"taskID" bson:"taskID,omitempty"`
 	Creation time.Time    `json:"dateTime" bson:"dateTime,omitempty"`
 	Status   *StatusPoint `json:"status" bson:"status,omitempty"`
+	PartyId  string       `json:"party_id" bson:"id,omitempty"`
 }
 
-func (t *Task) Create() *TaskInProgress {
+func (t *Task) Start(aPartyId string) (*TaskInProgress, error) {
 	tip := &TaskInProgress{
-		ID:       uuid.New(),
+		ID:       uuid.New().String(),
 		TaskID:   t.ID,
 		Creation: time.Now(),
+		PartyId:  aPartyId,
 		Status: &StatusPoint{
 			ID:        uuid.New(),
 			Timestamp: time.Now(),
 			Status:    NOT_STARTED,
 		},
 	}
-	return tip
+	return tip, nil
 }
 
 func NewTask(aName string, aDescription string) *Task {
-	return &Task{ID: uuid.New(), Name: aName, Description: aDescription}
+	return &Task{ID: uuid.New().String(), Name: aName, Description: aDescription}
 }
 
 func (tip *TaskInProgress) changeStatus(status *StatusPoint) error {
@@ -76,7 +79,7 @@ func (tip *TaskInProgress) Complete() error {
 }
 
 type TaskSchedule struct {
-	TaskID      uuid.UUID `json:"taskID" bson:"taskID,omitempty"`
-	Name        string    `json:"name" bson:"name,omitempty"`
-	Description string    `json:"description" bson:"description,omitempty"`
+	TaskID      string `json:"taskID" bson:"taskID,omitempty"`
+	Name        string `json:"name" bson:"name,omitempty"`
+	Description string `json:"description" bson:"description,omitempty"`
 }

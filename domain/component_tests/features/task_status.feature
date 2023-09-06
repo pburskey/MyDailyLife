@@ -1,7 +1,7 @@
 Feature: Task Status
-#
-#  Background:
-#
+
+  Background:
+
 #
 #  Scenario: Initial Status
 #    Given a new task
@@ -39,7 +39,7 @@ Feature: Task Status
 #    Then the task status is "Completed"
 #    When I start the task
 #    Then the task status is "Completed"
-#
-#
-#
-#
+
+
+
+
