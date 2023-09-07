@@ -14,7 +14,8 @@ func main() {
 	}
 
 	taska := domain.NewTask("a", "a")
-	tip := taska.Start(party.ID)
+
+	tip, _ := taska.Start(party.ID)
 	if err := tip.Start(); err != nil {
 		panic("Unable to start a task")
 	}
