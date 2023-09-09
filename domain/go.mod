@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/cucumber/godog v0.12.6
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1

@@ -1,33 +1,46 @@
 package main
 
 import (
-	"burskey/mydailylife/domain/internal/mysql"
+	redis_utility "burskey/mydailylife/domain/internal/redis"
 	"burskey/mydailylife/domain/internal/utility"
 	"burskey/mydailylife/domain/package/dao"
+	"burskey/mydailylife/domain/package/dao/redis"
+	"burskey/mydailylife/domain/package/domain"
+	"burskey/mydailylife/domain/package/service"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/golang/gddo/httputil/header"
+	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"net/http"
-	"os"
+	"strings"
 )
 
 var daoImpl dao.DAO
+var taskService *service.TaskService
 
 func main() {
 
-	arguments := os.Args[1:]
-	config := utility.LoadConfiguration(arguments[0])
+	//arguments := os.Args[1:]
+	//config := utility.LoadConfiguration(arguments[0])
 
-	mysqlconfiguration, err := mysql.Configure(config.MySQL)
-	if err != nil {
-		log.Fatal(err)
+	//mysqlconfiguration, err := mysql.Configure(config.MySQL)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//defer mysqlconfiguration.Close()
+
+	redisConfiguration := utility.RedisConfiguration{
+		Password: "letmein",
 	}
-	defer mysqlconfiguration.Close()
-
-	//redisConnection := redis_utility.Factory(config.Redis)
-	//redisDAOImpl := redis.Build(redisConnection)
+	redisConnection := redis_utility.Factory(redisConfiguration)
+	redisDAOImpl := redis.Factory(redisConnection)
 	//daoImpl = mysql.Build(mysqlconfiguration, redisDAOImpl)
+	taskService = service.Factory(redisDAOImpl)
 
 	r := mux.NewRouter()
 	r.Use(CORS)
@@ -50,6 +63,13 @@ func main() {
 	//api.HandleFunc("/date/{aDate}/metrics", metricsByDate).Methods(http.MethodGet)
 	//api.HandleFunc("/metric/{aMetric}", metric).Methods(http.MethodGet)
 
+	api.HandleFunc("/party", saveParty).Methods(http.MethodPost)
+	api.HandleFunc("/party/{partyID}/task", saveTask).Methods(http.MethodPost)
+	api.HandleFunc("/party/{partyID}", getParty).Methods(http.MethodGet)
+	api.HandleFunc("/task/{taskID}/load", loadTask).Methods(http.MethodPost)
+	api.HandleFunc("/task/{taskID}", getTask).Methods(http.MethodGet)
+	api.HandleFunc("/task{taskID}/status/{status}", saveTaskInProgressStatus).Methods(http.MethodPost)
+
 	cors := handlers.CORS(
 		handlers.AllowedHeaders([]string{"content-type"}),
 		handlers.AllowedOrigins([]string{"*"}),
@@ -58,6 +78,84 @@ func main() {
 	cors(r)
 	//log.Fatal(http.ListenAndServe(":8080", r))
 	http.ListenAndServe(":8080", setHeaders(r))
+
+}
+
+func getParty(writer http.ResponseWriter, request *http.Request) {
+	//var task *domain.Task
+
+	pathParams := mux.Vars(request)
+	writer.Header().Set("Content-Type", "application/json")
+
+	id := ""
+
+	if val, ok := pathParams["partyID"]; ok {
+		id = val
+	} else {
+		writer.WriteHeader(http.StatusInternalServerError)
+		writer.Write([]byte(`{"message": "need a task id"}`))
+		return
+	}
+
+	party, err := taskService.GetParty(id)
+	if err != nil {
+
+	}
+
+	fmt.Fprintf(writer, "Party: %+v", party)
+}
+
+func getTask(writer http.ResponseWriter, request *http.Request) {
+	//var task *domain.Task
+
+	pathParams := mux.Vars(request)
+	writer.Header().Set("Content-Type", "application/json")
+
+	id := ""
+
+	if val, ok := pathParams["taskID"]; ok {
+		id = val
+	} else {
+		writer.WriteHeader(http.StatusInternalServerError)
+		writer.Write([]byte(`{"message": "need a task id"}`))
+		return
+	}
+
+	task, err := taskService.GetTask(id)
+	if err != nil {
+
+	}
+
+	fmt.Fprintf(writer, "Taswk: %+v", task)
+}
+
+func saveTaskInProgressStatus(writer http.ResponseWriter, request *http.Request) {
+
+}
+
+func loadTask(writer http.ResponseWriter, request *http.Request) {
+
+	//var task *domain.Task
+
+	pathParams := mux.Vars(request)
+	writer.Header().Set("Content-Type", "application/json")
+
+	taskID := ""
+
+	if val, ok := pathParams["taskID"]; ok {
+		taskID = val
+	} else {
+		writer.WriteHeader(http.StatusInternalServerError)
+		writer.Write([]byte(`{"message": "need a task id"}`))
+		return
+	}
+
+	task, err := taskService.GetTask(taskID)
+	if err != nil {
+
+	}
+
+	fmt.Fprintf(writer, "Task: %+v", task)
 
 }
 
@@ -109,6 +207,71 @@ func delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "delete called"}`))
+}
+
+func saveTask(w http.ResponseWriter, r *http.Request) {
+	var task *domain.Task
+	err := decodeJSONBody(w, r, &task)
+
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			http.Error(w, mr.msg, mr.status)
+		} else {
+			log.Print(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+	pathParams := mux.Vars(r)
+	w.Header().Set("Content-Type", "application/json")
+
+	partyID := ""
+
+	if val, ok := pathParams["partyID"]; ok {
+		partyID = val
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"message": "need a party id"}`))
+		return
+	}
+
+	task = &domain.Task{
+		ID:          uuid.New().String(),
+		Name:        task.Name,
+		Description: task.Description,
+		PartyId:     partyID,
+	}
+	if err := taskService.SaveTask(task); err != nil {
+
+	}
+	fmt.Fprintf(w, "%+v", task.ID)
+}
+
+func saveParty(w http.ResponseWriter, r *http.Request) {
+	var party *domain.Person
+	err := decodeJSONBody(w, r, &party)
+
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			http.Error(w, mr.msg, mr.status)
+		} else {
+			log.Print(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+	party = &domain.Person{
+		ID:    uuid.New().String(),
+		First: party.First,
+		Last:  party.Last,
+	}
+
+	if err := taskService.SaveParty(party); err != nil {
+
+	}
+	fmt.Fprintf(w, "%+v", party.ID)
 }
 
 //	func params(w http.ResponseWriter, r *http.Request) {
@@ -454,4 +617,73 @@ func setHeaders(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+
+}
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	if r.Header.Get("Content-Type") != "" {
+		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+		if value != "application/json" {
+			msg := "Content-Type header is not application/json"
+			return &malformedRequest{status: http.StatusUnsupportedMediaType, msg: msg}
+		}
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	err := dec.Decode(&dst)
+	if err != nil {
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+
+		switch {
+		case errors.As(err, &syntaxError):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			msg := fmt.Sprintf("Request body contains badly-formed JSON")
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.As(err, &unmarshalTypeError):
+			msg := fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", unmarshalTypeError.Field, unmarshalTypeError.Offset)
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			msg := fmt.Sprintf("Request body contains unknown field %s", fieldName)
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case errors.Is(err, io.EOF):
+			msg := "Request body must not be empty"
+			return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+
+		case err.Error() == "http: request body too large":
+			msg := "Request body must not be larger than 1MB"
+			return &malformedRequest{status: http.StatusRequestEntityTooLarge, msg: msg}
+
+		default:
+			return err
+		}
+	}
+
+	err = dec.Decode(&struct{}{})
+	if !errors.Is(err, io.EOF) {
+		msg := "Request body must only contain a single JSON object"
+		return &malformedRequest{status: http.StatusBadRequest, msg: msg}
+	}
+
+	return nil
+}
+
+type malformedRequest struct {
+	status int
+	msg    string
+}
+
+func (mr *malformedRequest) Error() string {
+	return mr.msg
 }

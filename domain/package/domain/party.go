@@ -5,6 +5,7 @@ type Party interface {
 }
 
 type Person struct {
-	ID          string `json:"id" bson:"id,omitempty"`
-	First, Last string
+	ID    string `json:"id" bson:"id,omitempty"`
+	First string `json:"first" bson:"first,omitempty"`
+	Last  string `json:"last" bson:"last,omitempty"`
 }
