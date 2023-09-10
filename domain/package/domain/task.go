@@ -18,15 +18,13 @@ type TaskInProgress struct {
 	TaskID   string       `json:"taskID" bson:"taskID,omitempty"`
 	Creation time.Time    `json:"dateTime" bson:"dateTime,omitempty"`
 	Status   *StatusPoint `json:"status" bson:"status,omitempty"`
-	PartyId  string       `json:"party_id" bson:"id,omitempty"`
 }
 
-func (t *Task) Start(aPartyId string) (*TaskInProgress, error) {
+func (t *Task) Start() (*TaskInProgress, error) {
 	tip := &TaskInProgress{
 		ID:       uuid.New().String(),
 		TaskID:   t.ID,
 		Creation: time.Now(),
-		PartyId:  aPartyId,
 		Status: &StatusPoint{
 			ID:        uuid.New(),
 			Timestamp: time.Now(),

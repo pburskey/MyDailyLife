@@ -5,51 +5,73 @@ SHOW WARNINGS;
 
 DROP SCHEMA IF EXISTS `mydailylife` ;
 CREATE SCHEMA IF NOT EXISTS `mydailylife` ;
-USE `hasd_covid` ;
+USE `mydailylife` ;
 
-DROP TABLE IF EXISTS `hasd_covid`.`category` ;
+DROP TABLE IF EXISTS `mydailylife`.`person` ;
 
-CREATE  TABLE IF NOT EXISTS `hasd_covid`.`category` (
-  `category_skey` INT NOT NULL AUTO_INCREMENT ,
-  `description` VARCHAR(100) NOT NULL ,
-  PRIMARY KEY (`category_skey`) ,
-  UNIQUE INDEX `category_skey_UNIQUE` (`category_skey` ASC) )
+CREATE  TABLE IF NOT EXISTS `mydailylife`.`person` (
+  `id` varchar(200) NOT NULL ,
+  `first` VARCHAR(100) NOT NULL ,
+  `last` VARCHAR(100) NOT NULL ,
+  PRIMARY KEY (`id`) ,
+  UNIQUE INDEX `person_id_UNIQUE` (`id` ASC) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = latin1;
 SHOW WARNINGS;
 
-DROP TABLE IF EXISTS `hasd_covid`.`school` ;
-CREATE  TABLE IF NOT EXISTS `hasd_covid`.`school` (
-  `school_skey` INT NOT NULL AUTO_INCREMENT,
-  `description` VARCHAR(100) NOT NULL ,
-  PRIMARY KEY (`school_skey`),
-  UNIQUE INDEX `school_skey_UNIQUE` (`school_skey` ASC) )
+
+DROP TABLE IF EXISTS `mydailylife`.`task` ;
+CREATE  TABLE IF NOT EXISTS `mydailylife`.`task` (
+    `id` varchar(200) NOT NULL ,
+    `party_id` varchar(200) NOT NULL ,
+    `name` VARCHAR(100) NOT NULL ,
+  `description` VARCHAR(1024) NOT NULL ,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `task_id_UNIQUE` (`id` ASC),
+    KEY `task_party_id` (`party_id`),
+    CONSTRAINT `task_party_id` FOREIGN KEY (`party_id`) REFERENCES `person` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+    )
+
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = latin1;
 SHOW WARNINGS;
 
-DROP TABLE IF EXISTS `hasd_covid`.`metric` ;
 
-CREATE  TABLE IF NOT EXISTS `hasd_covid`.`metric` (
-    `metric_skey` INT NOT NULL AUTO_INCREMENT,
-    `category_skey` INT NOT NULL ,
-    `school_skey` INT NOT NULL ,
-    `ts` TIMESTAMP NOT NULL ,
-    `active_cases` int NOT NULL default 0,
-    `total_positive_cases` int NOT NULL default 0,
-    `total_probable_cases` int NOT NULL default 0,
-    `resolved` int NOT NULL default 0,
-  PRIMARY KEY (`metric_skey`) ,
-  UNIQUE INDEX `metric_metric_skey_UNIQUE` (`metric_skey` ASC) ,
-  KEY `metric_category_skey` (`category_skey`),
-  KEY `metric_school_skey` (`school_skey`),
-  CONSTRAINT `metric_category_skey` FOREIGN KEY (`category_skey`) REFERENCES `category` (`category_skey`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  CONSTRAINT `metric_school_skey` FOREIGN KEY (`school_skey`) REFERENCES `school` (`school_skey`) ON DELETE NO ACTION ON UPDATE NO ACTION
-)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = latin1;
 
+DROP TABLE IF EXISTS `mydailylife`.`status` ;
+CREATE  TABLE IF NOT EXISTS `mydailylife`.`status` (
+   `skey` int unsigned AUTO_INCREMENT NOT NULL ,
+    `id` varchar(200) NOT NULL ,
+    `ts` timestamp ,
+    `status` int unsigned NOT NULL ,
+    PRIMARY KEY (`skey`),
+    UNIQUE INDEX `status_skey_UNIQUE` (`skey` ASC)
+    )
+
+    ENGINE = InnoDB
+    DEFAULT CHARACTER SET = latin1;
 SHOW WARNINGS;
+
+
+DROP TABLE IF EXISTS `mydailylife`.`task_in_progress` ;
+CREATE  TABLE IF NOT EXISTS `mydailylife`.`task_in_progress` (
+    `id` varchar(200) NOT NULL ,
+    `task_id` varchar(200) NOT NULL ,
+    `creation` timestamp ,
+    `description` VARCHAR(1024) NOT NULL ,
+    `status_id` varchar(200) NOT NULL ,
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `tip_id_UNIQUE` (`id` ASC),
+    KEY `tip_task_id` (`task_id`),
+    KEY `tip_status_id` (`status_id`),
+    CONSTRAINT `tip_task_id` FOREIGN KEY (`task_id`) REFERENCES `task` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+    CONSTRAINT `tip_status_id` FOREIGN KEY (`status_id`) REFERENCES `status` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+    )
+
+    ENGINE = InnoDB
+    DEFAULT CHARACTER SET = latin1;
+SHOW WARNINGS;
+
 
 
 SET SQL_MODE=@OLD_SQL_MODE;

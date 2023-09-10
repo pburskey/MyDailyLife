@@ -49,8 +49,12 @@ func (me *TaskService) GetTasksByParty(uuid string) (task []*domain.Task, err er
 	return nil, nil
 }
 
-func (me *TaskService) LoadTask(id string) (*domain.TaskInProgress, error) {
-	return nil, nil
+func (me *TaskService) SaveTaskInProgress(tip *domain.TaskInProgress) error {
+	if err := me.dao.SaveTaskInProgress(tip); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func Factory(aDAO *redis.DAO) *TaskService {

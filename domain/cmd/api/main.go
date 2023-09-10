@@ -155,6 +155,15 @@ func loadTask(writer http.ResponseWriter, request *http.Request) {
 
 	}
 
+	var tip *domain.TaskInProgress
+	if tip, err = task.Start(); err != nil {
+
+	}
+
+	if err = taskService.SaveTaskInProgress(tip); err != nil {
+
+	}
+
 	fmt.Fprintf(writer, "Task: %+v", task)
 
 }

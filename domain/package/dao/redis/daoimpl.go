@@ -98,6 +98,19 @@ func (me *DAO) GetParty(guid string) (*domain.Person, error) {
 }
 
 func (me *DAO) SaveTaskInProgress(tip *domain.TaskInProgress) error {
+	conn := me.redis.GetRedisConnection()
+	defer conn.Close()
+
+	bytes, err := json.Marshal(tip)
+	if err != nil {
+
+	}
+	id := tip.ID
+	if _, err := conn.Do("SET", id, string(bytes)); err != nil {
+		log.Fatal("Unable to store data in redis.... ", err)
+		return err
+	}
+
 	return nil
 }
 

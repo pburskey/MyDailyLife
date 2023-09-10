@@ -1,4 +1,4 @@
-APP_NAME=HASD_COVID
+APP_NAME=MYDAILYLIFE
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 export ROOT_DIR=${PWD}
 #.help:                             ##this help

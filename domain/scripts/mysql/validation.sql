@@ -1,9 +1,10 @@
-USE `hasd_covid` ;
+USE `mydailylife` ;
 SHOW WARNINGS;
 show databases;
 
-describe category;
-describe school;
-describe metric;
+describe person;
+describe task;
+describe task_in_progress;
+describe status;
 
 SHOW WARNINGS;

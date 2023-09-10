@@ -33,6 +33,7 @@ func StatusFactory(name string) Status {
 }
 
 type StatusPoint struct {
+	SKEY      uint      `json:"skey" bson:"skey,omitempty"`
 	ID        uuid.UUID `json:"id" bson:"id,omitempty"`
 	Timestamp time.Time `json:"timeStamp" bson:"timeStamp,omitempty"`
 	Status    Status    `json:"status" bson:"status,omitempty"`
